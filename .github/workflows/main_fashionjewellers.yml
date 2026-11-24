@@ -12,6 +12,28 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: fashion_jewellery_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fashion_jewellery_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: fashion_jewellery_db
+      DB_SSL: 'false'
+      JWT_SECRET: test-only-jwt-secret
     permissions:
       contents: read #This is required for actions/checkout
 
@@ -22,6 +44,11 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '24.x'
+
+      - name: Set up test database
+        run: |
+          PGPASSWORD="$DB_PASSWORD" psql --host "$DB_HOST" --port "$DB_PORT" --username "$DB_USER" --dbname "$DB_NAME" --set ON_ERROR_STOP=on --file db/setup_postgres.sql
+          PGPASSWORD="$DB_PASSWORD" psql --host "$DB_HOST" --port "$DB_PORT" --username "$DB_USER" --dbname "$DB_NAME" --set ON_ERROR_STOP=on --file server/test/fixtures/ci.sql
 
       - name: npm install, build, and test
         working-directory: ./server
